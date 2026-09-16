@@ -338,7 +338,11 @@ light:
             Color color(light_color.get_red() * 255, light_color.get_green() * 255,
                   light_color.get_blue() * 255);
             Color muted_color(255, 0, 0);
-            auto timer_ratio = 24.0f * id(first_active_timer).seconds_left / max(id(first_active_timer).total_seconds , static_cast<uint32_t>(1));
+            // va_client does not expose timer remaining time yet; timer ring disabled
+            auto timer_ratio = -1.0f;
+            if (id(is_timer_active)) {
+              timer_ratio = 0.0f;
+            }
             uint8_t last_led_on = static_cast<uint8_t>(ceil(timer_ratio)) - 1;
             for (int i = 0; i < 24; i++) {
               float brightness_dip = ( i == id(global_led_animation_index) % 24 && i != last_led_on ) ? 0.9f : 1.0f ;
