@@ -14,6 +14,9 @@ substitutions:
 
   esp32_fw_version: dev
   xmos_fw_version: "v1.0.3"
+  # WebSocket endpoint of the voice backend (OpenAI Realtime / other WS audio server).
+  # Defaults to a LAN-local add-on listening on port 8080.
+  va_url: "ws://homeassistant.local:8080/"
   # Production configurations enable this; dashboard builds only wait for a responding XMOS.
   xmos_auto_flash_on_boot: "false"
 

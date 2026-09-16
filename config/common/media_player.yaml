@@ -75,10 +75,15 @@ media_player:
         - http_media_source
 
     on_mute:
+      - lambda: 'id(va).set_volume(0.0f);'
       - script.execute: control_leds
     on_unmute:
+      - lambda: 'id(va).set_volume(id(external_media_player).volume);'
       - script.execute: control_leds
     on_volume:
+      - lambda: |-
+          id(va).set_volume(id(external_media_player).is_muted() ? 0.0f
+                                                                  : id(external_media_player).volume);
       - script.execute: control_leds
     # Apply audio ducking when an announcement starts
     on_announcement:
@@ -93,8 +98,7 @@ media_player:
           condition:
             and:
               - switch.is_off: timer_ringing
-              - not:
-                  voice_assistant.is_running:
+              - lambda: 'return id(voice_assistant_phase) == ${voice_assist_idle_phase_id};'
               - not:
                   media_player.is_announcing: external_media_player
           then:
