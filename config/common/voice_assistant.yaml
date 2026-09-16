@@ -160,6 +160,10 @@ va_client:
         then:
           - micro_wake_word.enable_model: stop
           - script.stop: followup_window_watchdog
+          # See script unmute_media_lane_instant — the wake chime's media-lane
+          # duck ramp stalls during the silent listening/thinking window, so
+          # snap the lane back to 0 dB before the reply plays.
+          - script.execute: unmute_media_lane_instant
     # Cancel watchdog on new listening
     - if:
         condition:
@@ -215,6 +219,36 @@ script:
             - micro_wake_word.disable_model: stop
             - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
             - script.execute: control_leds
+  # Forces media_mixing_input ducking to 0 dB instantly.
+  #
+  # Background: the wake chime is an announcement, so on_announcement ducks the
+  # media lane by 20 dB (instant), and when the chime ends on_state schedules a
+  # restore to 0 dB over 1.0s. That restore ramp is SAMPLE-based
+  # (esp-audio-libs ducking::apply is only called while audio flows through the
+  # source), so it stalls at ~-19 dB during the silent listening/thinking
+  # window and unwinds over the first ~1 s of the reply — the "starts quiet,
+  # ramps up" symptom.
+  #
+  # Naively calling apply_ducking(0, 0.0s) does NOT fix this:
+  # ducking::set_target() early-returns when the requested level already equals
+  # state.target_db_reduction — which is already 0 (the stalled restore) — so
+  # the request is dropped and the ramp keeps its stalled current_db_reduction.
+  # set_target() snapshots current = target, so stepping through an
+  # intermediate level forces a jump: 0->1 dB (instant), then 1->0 dB (instant),
+  # leaving the state settled at 0 dB with no transition pending. Idempotent
+  # when the lane is already at 0 dB; safe with audio flowing because both
+  # requests execute back-to-back before the mixer task ducks another block.
+  - id: unmute_media_lane_instant
+    mode: single
+    then:
+      - mixer_speaker.apply_ducking:
+          id: media_mixing_input
+          decibel_reduction: 1
+          duration: 0.0s
+      - mixer_speaker.apply_ducking:
+          id: media_mixing_input
+          decibel_reduction: 0
+          duration: 0.0s
 
 select:
   - platform: template
